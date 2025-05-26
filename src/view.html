@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ethereum QR Code Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .qr-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .qr-code {
+            max-width: 300px;
+            margin: 10px auto;
+        }
+        .details {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .error {
+            color: #dc3545;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #dc3545;
+            border-radius: 4px;
+            display: none;
+        }
+        .generator {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ethereum QR Code Viewer</h1>
+        
+        <div class="generator">
+            <h3>Generate New QR Code</h3>
+            <input type="text" id="amount" placeholder="Amount in ETH (e.g. 0.1)">
+            <input type="text" id="address" placeholder="Ethereum address (0x...)">
+            <input type="text" id="label" placeholder="Payment label">
+            <button onclick="generateNewQRCode()">Generate QR Code</button>
+        </div>
+
+        <div style="margin-top: 30px;">
+            <h3>View Existing QR Code</h3>
+            <input type="text" id="jobId" placeholder="Enter job ID">
+            <button onclick="fetchQRCode()">View QR Code</button>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="qr-container">
+            <img id="qrCode" class="qr-code" style="display: none;">
+        </div>
+
+        <div class="details" id="details" style="display: none;">
+            <h3>Payment Details:</h3>
+            <p><strong>Amount:</strong> <span id="amountDisplay"></span> ETH</p>
+            <p><strong>Address:</strong> <span id="addressDisplay"></span></p>
+            <p><strong>Label:</strong> <span id="labelDisplay"></span></p>
+            <p><strong>Payment URI:</strong> <span id="uri"></span></p>
+        </div>
+    </div>
+
+    <script>
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        async function generateNewQRCode() {
+            const amount = document.getElementById('amount').value;
+            const address = document.getElementById('address').value;
+            const label = document.getElementById('label').value;
+
+            if (!amount || !address) {
+                showError('Please enter both amount and address');
+                return;
+            }
+
+            const input = `Generate a QR code for ${amount} ETH payment to ${address} with label "${label}"`;
+            
+            try {
+                const response = await fetch('http://127.0.0.1:3003/start_job', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ input })
+                });
+
+                const data = await response.json();
+                if (data.job_id) {
+                    document.getElementById('jobId').value = data.job_id;
+                    setTimeout(() => fetchQRCode(), 1000);
+                }
+            } catch (error) {
+                showError('Error generating QR code. Please try again.');
+            }
+        }
+
+        async function fetchQRCode() {
+            const jobId = document.getElementById('jobId').value;
+            if (!jobId) {
+                showError('Please enter a job ID');
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://127.0.0.1:3003/result/${jobId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch QR code');
+                }
+                
+                const data = await response.json();
+                
+                // Display QR Code
+                document.getElementById('qrCode').src = data.qrCode;
+                document.getElementById('qrCode').style.display = 'block';
+                
+                // Display Details
+                document.getElementById('amountDisplay').textContent = data.params.amount;
+                document.getElementById('addressDisplay').textContent = data.params.address;
+                document.getElementById('labelDisplay').textContent = data.params.label;
+                document.getElementById('uri').textContent = data.uri;
+                document.getElementById('details').style.display = 'block';
+                
+                // Hide error if any
+                document.getElementById('error').style.display = 'none';
+            } catch (error) {
+                showError('Error fetching QR code. Please check the job ID and try again.');
+            }
+        }
+    </script>
+</body>
+</html> 
