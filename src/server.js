@@ -3,16 +3,27 @@ const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
 const config = require('./config');
-const EthereumQRService = require('./service');
+const MultiChainQRService = require('./service');
 
 const app = express();
-const service = new EthereumQRService();
+const service = new MultiChainQRService();
 
 // Store job states
 const jobs = new Map();
 
+// Configure CORS
 app.use(cors());
+
 app.use(express.json());
+app.use(express.static('src')); // Serve static files from src directory
+
+// Config endpoint
+app.get('/config', (req, res) => {
+    res.json({
+        port: config.port,
+        host: config.host
+    });
+});
 
 // Input schema endpoint
 app.get('/input_schema', (req, res) => {
@@ -120,7 +131,7 @@ async function processJob(jobId, input) {
 function startServer(port) {
     try {
         app.listen(port, config.host, () => {
-            console.log(`Ethereum QR Code Generator Service running on http://${config.host}:${port}`);
+            console.log(`Crypto Payments QR Code Generator Service running on http://${config.host}:${port}`);
         }).on('error', (err) => {
             if (err.code === 'EADDRINUSE') {
                 console.log(`Port ${port} is in use, trying ${port + 1}`);

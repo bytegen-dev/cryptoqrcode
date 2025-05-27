@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Ethereum QR Code Viewer</title>
+    <title>Multi-Chain Payment QR Code Generator</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -31,7 +31,7 @@
             border-radius: 4px;
         }
         button {
-            background-color: #007bff;
+            background-color: #26a17b;
             color: white;
             border: none;
             padding: 10px 20px;
@@ -39,9 +39,9 @@
             cursor: pointer;
         }
         button:hover {
-            background-color: #0056b3;
+            background-color: #1a8463;
         }
-        input {
+        input, select {
             width: 100%;
             padding: 8px;
             margin: 10px 0;
@@ -61,17 +61,38 @@
             padding-top: 20px;
             border-top: 1px solid #ddd;
         }
+        .chain-logo {
+            width: 24px;
+            height: 24px;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        .token-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .token-logo {
+            width: 20px;
+            height: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Ethereum QR Code Viewer</h1>
+        <h1>Multi-Chain Payment QR Code Generator</h1>
         
         <div class="generator">
             <h3>Generate New QR Code</h3>
-            <input type="text" id="amount" placeholder="Amount in ETH (e.g. 0.1)">
-            <input type="text" id="address" placeholder="Ethereum address (0x...)">
-            <input type="text" id="label" placeholder="Payment label">
+            <select id="chain" onchange="updateTokens()">
+                <option value="">Select Chain</option>
+            </select>
+            <select id="token" onchange="updateAmountPlaceholder()">
+                <option value="">Select Token</option>
+            </select>
+            <input type="text" id="amount" placeholder="Amount">
+            <input type="text" id="address" placeholder="Recipient Address">
+            <input type="text" id="label" placeholder="Payment label (optional)">
             <button onclick="generateNewQRCode()">Generate QR Code</button>
         </div>
 
@@ -89,14 +110,96 @@
 
         <div class="details" id="details" style="display: none;">
             <h3>Payment Details:</h3>
-            <p><strong>Amount:</strong> <span id="amountDisplay"></span> ETH</p>
+            <p><strong>Chain:</strong> <span id="chainDisplay"></span></p>
+            <p><strong>Token:</strong> <span id="tokenDisplay"></span></p>
+            <p><strong>Amount:</strong> <span id="amountDisplay"></span></p>
             <p><strong>Address:</strong> <span id="addressDisplay"></span></p>
             <p><strong>Label:</strong> <span id="labelDisplay"></span></p>
+            <p id="contractAddressContainer" style="display: none;">
+                <strong>Contract Address:</strong> <span id="contractAddress"></span>
+            </p>
             <p><strong>Payment URI:</strong> <span id="uri"></span></p>
         </div>
     </div>
 
     <script>
+        let chainsConfig = {};
+        let serverPort;
+        let serverHost;
+
+        async function getServerConfig() {
+            try {
+                const response = await fetch('/config');
+                if (response.ok) {
+                    const config = await response.json();
+                    serverPort = config.port;
+                    serverHost = config.host;
+                    return true;
+                }
+            } catch (error) {
+                showError('Could not connect to server. Please ensure the server is running.');
+                return false;
+            }
+        }
+
+        async function loadChainData() {
+            try {
+                // Get server config first
+                if (!await getServerConfig()) {
+                    return;
+                }
+                
+                const response = await fetch('/chains.json');
+                chainsConfig = await response.json();
+                populateChainSelect();
+            } catch (error) {
+                showError('Error loading chain configuration');
+                console.error('Error:', error);
+            }
+        }
+
+        function populateChainSelect() {
+            const chainSelect = document.getElementById('chain');
+            chainSelect.innerHTML = '<option value="">Select Chain</option>';
+            
+            Object.entries(chainsConfig).forEach(([id, chain]) => {
+                const option = document.createElement('option');
+                option.value = id;
+                option.textContent = chain.name;
+                chainSelect.appendChild(option);
+            });
+        }
+
+        function updateTokens() {
+            const chainId = document.getElementById('chain').value;
+            const tokenSelect = document.getElementById('token');
+            tokenSelect.innerHTML = '<option value="">Select Token</option>';
+            
+            if (chainId && chainsConfig[chainId]) {
+                Object.entries(chainsConfig[chainId].tokens).forEach(([symbol, token]) => {
+                    const option = document.createElement('option');
+                    option.value = symbol;
+                    option.textContent = `${token.name} (${token.symbol})`;
+                    tokenSelect.appendChild(option);
+                });
+            }
+            
+            updateAmountPlaceholder();
+        }
+
+        function updateAmountPlaceholder() {
+            const chainId = document.getElementById('chain').value;
+            const tokenSymbol = document.getElementById('token').value;
+            const amountInput = document.getElementById('amount');
+            
+            if (chainId && tokenSymbol && chainsConfig[chainId]?.tokens[tokenSymbol]) {
+                const token = chainsConfig[chainId].tokens[tokenSymbol];
+                amountInput.placeholder = `Amount in ${token.symbol} (e.g., 100)`;
+            } else {
+                amountInput.placeholder = 'Amount';
+            }
+        }
+
         function showError(message) {
             const errorDiv = document.getElementById('error');
             errorDiv.textContent = message;
@@ -107,19 +210,21 @@
         }
 
         async function generateNewQRCode() {
+            const chain = document.getElementById('chain').value;
+            const token = document.getElementById('token').value;
             const amount = document.getElementById('amount').value;
             const address = document.getElementById('address').value;
             const label = document.getElementById('label').value;
 
-            if (!amount || !address) {
-                showError('Please enter both amount and address');
+            if (!chain || !token || !amount || !address) {
+                showError('Please fill in all required fields');
                 return;
             }
 
-            const input = `Generate a QR code for ${amount} ETH payment to ${address} with label "${label}"`;
+            const input = `Generate a QR code for ${amount} ${token} payment on ${chain} to ${address}${label ? ` with label "${label}"` : ''}`;
             
             try {
-                const response = await fetch('http://127.0.0.1:3003/start_job', {
+                const response = await fetch(`http://${serverHost}:${serverPort}/start_job`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -134,6 +239,7 @@
                 }
             } catch (error) {
                 showError('Error generating QR code. Please try again.');
+                console.error('Error:', error);
             }
         }
 
@@ -145,7 +251,7 @@
             }
 
             try {
-                const response = await fetch(`http://127.0.0.1:3003/result/${jobId}`);
+                const response = await fetch(`http://${serverHost}:${serverPort}/result/${jobId}`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch QR code');
                 }
@@ -157,9 +263,24 @@
                 document.getElementById('qrCode').style.display = 'block';
                 
                 // Display Details
-                document.getElementById('amountDisplay').textContent = data.params.amount;
+                document.getElementById('chainDisplay').textContent = chainsConfig[data.params.chain].name;
+                document.getElementById('tokenDisplay').textContent = `${data.params.tokenInfo.name} (${data.params.tokenInfo.symbol})`;
+                document.getElementById('amountDisplay').textContent = `${data.params.amount} ${data.params.token}`;
                 document.getElementById('addressDisplay').textContent = data.params.address;
-                document.getElementById('labelDisplay').textContent = data.params.label;
+                document.getElementById('labelDisplay').textContent = data.params.label || 'N/A';
+                
+                // Show contract address for non-native tokens
+                const contractAddressContainer = document.getElementById('contractAddressContainer');
+                if (data.params.tokenInfo.isNative) {
+                    contractAddressContainer.style.display = 'none';
+                } else {
+                    contractAddressContainer.style.display = 'block';
+                    document.getElementById('contractAddress').textContent = 
+                        data.params.tokenInfo.contractAddress || 
+                        data.params.tokenInfo.address || 
+                        data.params.tokenInfo.policyId;
+                }
+                
                 document.getElementById('uri').textContent = data.uri;
                 document.getElementById('details').style.display = 'block';
                 
@@ -167,8 +288,12 @@
                 document.getElementById('error').style.display = 'none';
             } catch (error) {
                 showError('Error fetching QR code. Please check the job ID and try again.');
+                console.error('Error:', error);
             }
         }
+
+        // Load chain data when page loads
+        document.addEventListener('DOMContentLoaded', loadChainData);
     </script>
 </body>
 </html> 

@@ -1,12 +1,13 @@
-# Ethereum Payment QR Code Generator Service
+# USDT Payment QR Code Generator Service
 
-An agentic service that generates QR codes for Ethereum payments using natural language input.
+An agentic service that generates QR codes for USDT (Tether) payments using natural language input.
 
 ## Features
 
 - Natural language input processing
-- EIP-681 compliant Ethereum payment QR codes
+- EIP-681 compliant USDT payment QR codes
 - Ethereum address validation
+- USDT contract integration
 - Asynchronous job processing
 - Masumi Agentic Service API compliance
 
@@ -43,7 +44,7 @@ node src/server.js
    Content-Type: application/json
 
    {
-     "input": "Generate a QR code for 0.05 ETH payment to 0x742d35Cc6634C0532925a3b844Bc454e4438f44e with label 'Consulting'"
+     "input": "Generate a QR code for 100 USDT payment to 0x742d35Cc6634C0532925a3b844Bc454e4438f44e with label 'Consulting'"
    }
    ```
 
@@ -75,11 +76,13 @@ node src/server.js
 ```json
 {
   "qrCode": "data:image/png;base64,...",
-  "uri": "ethereum:0x742d35Cc6634C0532925a3b844Bc454e4438f44e?value=50000000000000000",
+  "uri": "ethereum:0xdAC17F958D2ee523a2206206994597C13D831ec7/transfer?address=0x742d35Cc6634C0532925a3b844Bc454e4438f44e&uint256=100000000",
   "params": {
-    "amount": "0.05",
+    "amount": "100",
     "address": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
-    "label": "Consulting"
+    "label": "Consulting",
+    "contractAddress": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+    "tokenDecimals": 6
   }
 }
 ```
