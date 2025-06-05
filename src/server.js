@@ -130,18 +130,30 @@ async function processJob(jobId, input) {
 
 function startServer(port) {
     try {
-        app.listen(port, config.host, () => {
+        const server = app.listen(port, config.host, () => {
             console.log(`Crypto Payments QR Code Generator Service running on http://${config.host}:${port}`);
+            console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
         }).on('error', (err) => {
             if (err.code === 'EADDRINUSE') {
                 console.log(`Port ${port} is in use, trying ${port + 1}`);
                 startServer(port + 1);
             } else {
                 console.error('Server error:', err);
+                process.exit(1);
             }
+        });
+
+        // Handle graceful shutdown
+        process.on('SIGTERM', () => {
+            console.log('SIGTERM received. Closing server...');
+            server.close(() => {
+                console.log('Server closed');
+                process.exit(0);
+            });
         });
     } catch (err) {
         console.error('Failed to start server:', err);
+        process.exit(1);
     }
 }
 
