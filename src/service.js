@@ -74,9 +74,11 @@ class MultiChainQRService {
             uri = `bitcoin:${params.address}?amount=${params.amount}`;
         } else if (params.chain === 'cardano') {
             if (tokenConfig.isNative) {
-                uri = `web+cardano:${params.address}?amount=${amount}`;
+                // ADA: amount in lovelace (integer, no decimals)
+                const amountLovelace = (parseFloat(params.amount) * 1_000_000).toFixed(0);
+                uri = `cardano:${params.address}?amount=${amountLovelace}`;
             } else {
-                uri = `web+cardano:${params.address}?amount=${amount}&policy_id=${tokenConfig.policyId}`;
+                uri = `cardano:${params.address}?amount=${amount}&policy_id=${tokenConfig.policyId}`;
             }
         } else if (params.chain === 'solana') {
             if (tokenConfig.isNative) {
