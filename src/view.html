@@ -126,6 +126,7 @@
         let chainsConfig = {};
         let serverPort;
         let serverHost;
+        let apiBaseUrl = '';
 
         async function getServerConfig() {
             try {
@@ -134,6 +135,12 @@
                     const config = await response.json();
                     serverPort = config.port;
                     serverHost = config.host;
+                    // Set API base URL
+                    if (window.location.hostname.endsWith('railway.app')) {
+                        apiBaseUrl = '';
+                    } else {
+                        apiBaseUrl = `http://${serverHost}:${serverPort}`;
+                    }
                     return true;
                 }
             } catch (error) {
@@ -224,7 +231,7 @@
             const input = `Generate a QR code for ${amount} ${token} payment on ${chain} to ${address}${label ? ` with label "${label}"` : ''}`;
             
             try {
-                const response = await fetch(`http://${serverHost}:${serverPort}/start_job`, {
+                const response = await fetch(`${apiBaseUrl}/start_job`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -251,7 +258,7 @@
             }
 
             try {
-                const response = await fetch(`http://${serverHost}:${serverPort}/result/${jobId}`);
+                const response = await fetch(`${apiBaseUrl}/result/${jobId}`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch QR code');
                 }
