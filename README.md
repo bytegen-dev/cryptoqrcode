@@ -129,6 +129,10 @@ The service includes comprehensive error handling for:
 - Invalid amounts
 - Job processing failures
 
+## Cardano Wallet Compatibility Note
+
+> **Note:** The current Cardano ADA URI implementation uses the amount as an integer in ADA (e.g., `cardano:<address>?amount=654`). This works with Trust Wallet, but is unsupported on some other Cardano wallets (such as Eternl, Yoroi, Nami, and Vespr), which expect the amount in lovelace. Please check your wallet's documentation for compatibility.
+
 ## License
 
 ISC
