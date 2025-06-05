@@ -98,13 +98,6 @@
                 "symbol": "ADA",
                 "decimals": 6,
                 "isNative": true
-            },
-            "USDM": {
-                "name": "USD Moneta",
-                "symbol": "USDM",
-                "decimals": 6,
-                "policyId": "c48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ad",
-                "isNative": false
             }
         }
     }
